@@ -9,15 +9,23 @@ class MixiVoiceModalEditViewController < UIViewController
         UIBarButtonSystemItemDone,
         target: self, action: 'clickDoneButton'
       )
+    self.navigationItem.leftBarButtonItem = 
+      UIBarButtonItem.alloc.initWithBarButtonSystemItem(
+        UIBarButtonSystemItemCancel,
+        target: self, action: 'clickCancelButton'
+      )
     self.view.addSubview @edit_view
   end
 
   def clickDoneButton
     if @edit_view.hasText
-      p @edit_view.text
       App.shared.delegate.api_client.
         update_tweet(@edit_view.text)
     end
+    self.dismissModalViewControllerAnimated(true)
+  end
+
+  def clickCancelButton
     self.dismissModalViewControllerAnimated(true)
   end
 

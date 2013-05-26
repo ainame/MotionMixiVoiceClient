@@ -30,7 +30,7 @@ class MixiGraphAPI
     CONNECT_AUTHORIZE_URL + '?' + escaped_query
   end
 
-  def get_access_token(code)
+  def get_access_token(code, &block)
     body = {
       grant_type: "authorization_code",
       client_id: CONSUMER_KEY,
@@ -38,30 +38,43 @@ class MixiGraphAPI
       code: code,
       redirect_uri: REDIRECT_URI
     }
+    request_token_url(body, &block)
+  end
 
+  def refresh_access_token(refresh_token, &block)
+    body = {
+      grant_type: "refresh_token",
+      client_id: CONSUMER_KEY,
+      client_secret: CONSUMER_SECRET,
+      refresh_token: refresh_token,
+    }
+    request_token_url(body, &block)
+  end
+
+  def request_token_url(body, &block)
     BW::HTTP.post(TOKEN_URL, {payload: body}) do |response|
-      if response.ok?
-        json = BW::JSON.parse(response.body.to_s)
-        if json
-          @access_token = json["access_token"]
-          @refresh_token = json["refresh_token"]
-        end
+      if json = BW::JSON.parse(response.body.to_s)
+        @access_token = json["access_token"]
+        @refresh_token = json["refresh_token"]
       end
+      block.call
     end
   end
-  
+
+  def request(verb, endpoint, params, &block)
+    params.merge!({headers: { "Authorization" => "Bearer #{@access_token}"}})
+    BW::HTTP.__send__(verb, API_BASE_URL + endpoint, params, &block )
+  end
+
+  def friends_timeline(params = {}, &block)
+    request(:get, '/voice/statuses/friends_timeline',
+      params,  &block)
+  end
+
   def update_tweet(body)
-    options = {
-      headers: {
-        "Authorization" => "Bearer #{@access_token}",
-        #'Content-Type' => 'application/x-www-form-urlencoded'
-      },
-      payload: { status: body },
-    }
-    BW::HTTP.post(API_BASE_URL + '/voice/statuses',
-      options
-    ) do |response|
-      p response.body if response
+    params = { payload: { status: body } }
+    request(:post, '/voice/statuses', params) do |response|
+      p response if response
     end
   end
 
